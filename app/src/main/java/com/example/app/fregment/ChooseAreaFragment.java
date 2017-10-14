@@ -1,9 +1,11 @@
 package com.example.app.fregment;
 
 import android.content.Intent;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -15,6 +17,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.app.MainActivity;
 import com.example.app.R;
 import com.example.app.activity.WeatherActivity;
 import com.example.app.db.City;
@@ -71,7 +74,9 @@ public class ChooseAreaFragment extends Fragment {
         btn_back = inflate.findViewById(R.id.btn_back);
         rv_list = inflate.findViewById(R.id.rv_list);
         rv_list.setLayoutManager(new LinearLayoutManager(getContext()));
-        rv_list.addItemDecoration(new DividerItemDecoration(getContext(),LinearLayoutManager.VERTICAL));
+        DividerItemDecoration decoration = new DividerItemDecoration(getContext(), LinearLayoutManager.VERTICAL);
+        decoration.setDrawable(new ColorDrawable(0xcccccccc));
+        rv_list.addItemDecoration(decoration);
         rv_list.setAdapter(mListAdapter);
         return inflate;
 
@@ -91,10 +96,18 @@ public class ChooseAreaFragment extends Fragment {
                     queryCountries();
                 }else if(mCurrentLevel == LEVEL_COUNTRY){
                     String weatherId = mCountryList.get(position).getWeatherId();
-                    Intent intent = new Intent(getActivity(), WeatherActivity.class);
-                    intent.putExtra("weather_id",weatherId);
-                    startActivity(intent);
-                    getActivity().finish();
+                    if(getActivity() instanceof MainActivity) {
+                        Intent intent = new Intent(getActivity(), WeatherActivity.class);
+                        intent.putExtra("weather_id", weatherId);
+                        startActivity(intent);
+                        getActivity().finish();
+                    }else if(getActivity() instanceof WeatherActivity){
+                        WeatherActivity activity = (WeatherActivity) getActivity();
+                        activity.mDrawerLayout.closeDrawers();
+                        activity.mRefreshLayout.setRefreshing(false);
+                        activity.requestWeather(weatherId);
+                    }
+
                 }
             }
         });

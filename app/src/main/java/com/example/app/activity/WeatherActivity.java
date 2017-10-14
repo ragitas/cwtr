@@ -1,16 +1,21 @@
 package com.example.app.activity;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -21,6 +26,8 @@ import com.bumptech.glide.Glide;
 import com.example.app.R;
 import com.example.app.gson.Forecast;
 import com.example.app.gson.Weather;
+import com.example.app.service.AutoUpdateService;
+import com.example.app.util.Constants;
 import com.example.app.util.HttpUtil;
 import com.example.app.util.Utility;
 
@@ -50,18 +57,34 @@ public class WeatherActivity extends AppCompatActivity {
 
     private ImageView bingPic;
 
+    public SwipeRefreshLayout mRefreshLayout;
+    private String mWeatherId;
+    public DrawerLayout mDrawerLayout;
+    private Button navButton;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if(Build.VERSION.SDK_INT <= 21){
-            View decorView = getWindow().getDecorView();
-            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION );
-        }else{
+        if (Build.VERSION.SDK_INT >= 21) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
             getWindow().setStatusBarColor(0);
+        } else {
+            View decorView = getWindow().getDecorView();
+            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
         }
 
         setContentView(R.layout.activity_weather);
 
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        navButton = (Button) findViewById(R.id.nav_button);
+
+        navButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mDrawerLayout.openDrawer(GravityCompat.START);
+            }
+        });
+        mRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh);
         bingPic = (ImageView) findViewById(R.id.bingPic);
         mScrollView = (ScrollView) findViewById(R.id.weather_layout);
         titleCity = (TextView) findViewById(R.id.title_city);
@@ -77,21 +100,29 @@ public class WeatherActivity extends AppCompatActivity {
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         String bing_pic = preferences.getString("bing_pic", null);
-        if(!TextUtils.isEmpty(bing_pic)){
+        if (!TextUtils.isEmpty(bing_pic)) {
             Glide.with(this).load(bing_pic).into(bingPic);
-        }else{
+        } else {
             loadBingPic();
         }
 
         String weather = preferences.getString("weather", null);
         if (!TextUtils.isEmpty(weather)) {
             Weather weather1 = Utility.handleWeaherResponse(weather);
+            mWeatherId = weather1.mBasic.weatherId;
             showInfo(weather1);
         } else {
-            String weather_id = getIntent().getStringExtra("weather_id");
+            mWeatherId = getIntent().getStringExtra("weather_id");
             mScrollView.setVisibility(View.INVISIBLE);
-            requestWeather(weather_id);
+            requestWeather(mWeatherId);
         }
+
+        mRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                requestWeather(mWeatherId);
+            }
+        });
     }
 
     private void loadBingPic() {
@@ -105,7 +136,7 @@ public class WeatherActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 final String string = response.body().string();
-                PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit().putString("bing_pic",string).apply();
+                PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit().putString("bing_pic", string).apply();
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -117,8 +148,8 @@ public class WeatherActivity extends AppCompatActivity {
 
     }
 
-    private void requestWeather(String weather_id) {
-        String url = "http://guolin.tech/api/weather?cityid=" + weather_id + "&key=bc0418b57b2d4918819d3974ac1285d9";
+    public void requestWeather(String weather_id) {
+        String url = Constants.buildUrlByCityId(weather_id);
         HttpUtil.setOkHttpRequest(url, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
@@ -126,6 +157,7 @@ public class WeatherActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        mRefreshLayout.setRefreshing(false);
                         Toast.makeText(WeatherActivity.this, "获取天气信息失败", Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -146,6 +178,7 @@ public class WeatherActivity extends AppCompatActivity {
                         } else {
                             Toast.makeText(WeatherActivity.this, "获取天气信息失败", Toast.LENGTH_SHORT).show();
                         }
+                        mRefreshLayout.setRefreshing(false);
                     }
                 });
 
@@ -190,5 +223,9 @@ public class WeatherActivity extends AppCompatActivity {
         comfortText.setText(comfort);
         sportText.setText(sport);
         carWashText.setText(cw);
+
+        mScrollView.setVisibility(View.VISIBLE);
+        Intent intent = new Intent(this, AutoUpdateService.class);
+        startService(intent);
     }
 }
