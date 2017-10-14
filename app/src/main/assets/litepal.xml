@@ -3,8 +3,8 @@
     <dbname value="weather"/>
     <version value = "1"/>
     <list>
-        <mapping class="com.example.app.db.City"/>
-        <mapping class="com.example.app.db.Province"/>
-        <mapping class="com.example.app.db.Country"/>
+        <mapping class="com.roa_weather.app.db.City"/>
+        <mapping class="com.roa_weather.app.db.Province"/>
+        <mapping class="com.roa_weather.app.db.Country"/>
     </list>
 </litepal>
