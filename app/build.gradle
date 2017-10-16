@@ -14,12 +14,39 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
     }
+
+    signingConfigs {
+        config {
+            storeFile file(KEY_PATH)
+            storePassword KEY_PASS
+            keyAlias ALIAS_NAME
+            keyPassword ALIAS_PASS
+            v2SigningEnabled false
+        }
+    }
+
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.config
         }
     }
+
+    lintOptions{
+        abortOnError false
+    }
+
+    productFlavors{
+        qihoo{
+            applicationId "com.cwtr.android.qihoo"
+        }
+        baidu{
+            applicationId "com.cwtr.android.baidu"
+        }
+    }
+
 }
 
 dependencies {
